@@ -1,47 +1,98 @@
-# Ejercicio 3
+# Ejercicio 1
 
-Tenemos ya un servicio que encapsula el envío de mensajes a un proveedor externo y nos ofrece un contrato en forma de API,
-que tenemos correctamente documentado, y que hemos testeado.
+## Introducción
 
-Ahora queremos añadir una funcionalidad nueva que consiste en llevar un registro de mensajes de tal forma que podamos conocer en todo momento qué notificaciones hemos realizado.
+A lo largo del bootcamp vamos a ir trabajando en un proyecto que iremos extendiendo a medida que vayamos aprendiendo cosas.
+El proyecto consiste en un montar un sencillo sistema de envío de mensajes.
+Como toda la logística que implica realmente _entregar_ los mensajes es compleja y queda fuera del ámbito de este bootcamp,
+haremos uso de un servicio externo, `messageapp`, que nos abstraerá de toda esta complejidad.
 
-## 1. Crear un API de almacenamiento de mensajes en el registro
+En este primer ejercicio montaremos un API muy sencilla que interactúe con este servicio externo, que tenemos disponible como una image de docker.
 
-Para la capa de persistencia del registro utilizaremos [MongoDB](https://www.mongodb.com/), para ello hay que:
+###  1 - Clonar el repo y levantar messageapp
 
-- Opcionalmente, construir el modelo con [mongoose](https://mongoosejs.com/) (si prefieres hacerlo de otra forma, ¡perfecto! hazlo y explica por qué has elegido hacerlo de manera diferente).
-- Implementar un módulo que se encargue de persistir los mensajes en el registro.
+Como podemos ver en el repo, además de las instrucciones del ejercicio, tenemos un fichero `docker-compose.yml`.
+Este fichero contiene las instrucciones para poder montar el sistema distribuído que necesitamos para el ejercicio.
 
-Como hemos visto en los ejercicios anteriores, aquí también es interesante encapsular esta funcionalidad en un módulo.
-Esto nos permite desarrollar de manera independiente la funcionalidad de almacenamiento del registro del resto de componentes del servicio,
-y facilita hacer cambios en la capa de persistencia, cosa que haremos en futuros ejercicios.
+Si nos fijamos en el fichero, tiene una parte comentada (las líneas que comienzan con `#`),
+estas líneas las descomentaremos más adelante, inicialmente vamos a levantar solo el servicio `messageapp`.
 
-Esto quiere decir, de nuevo, que tenemos que definir el API que tendrá el módulo, documentarlo y testearlo, es decir,
-entregar un componente con un contrato bien definido que hemos validado que funciona correctamente.
+Para ello, basta con ejecutar:
 
-## 2. Persistir los mensajes en el registro
+```sh
+$ docker-compose up
+```
 
-Haciendo uso del módulo implementado en el punto anterior ya podemos persistir los mensajes que nos llegan a través del endpoint `/messages` en el registro de mensajes.
+Veremos cómo se descarga la imagen y se lanza el contenedor con el servicio.
+Cuando el servicio esté arrancado, podremos ver que el servicio funciona realizando una petición con POSTMAN o cURL con las siguientes opciones:
 
-## 3. Consultar los mensajes enviados
+```
+HOST 'localhost'
+PORT 3000
+POST '/message'
+'Content-Type': 'application/json',
+{
+  "destination": "STRING"
+  "body": "STRING"
+}
+```
 
-Queremos poder consultar los mensajes, para ello necesitaremos acceder al registro pero...
-¿hemos tenido en cuenta esta posibilidad a la hora de diseñar el API del módulo de persistencia?
-Si la respuesta es no, habrá que hacerlo ahora.
+### 2 - Crear el servicio
 
-- Modificar el módulo de persistencia si hace falta para poder obtener los mensajes del registro.
-- Añadir un endpoint en nuestro API HTTP con un método GET que devuelva todos los mensajes.
+Queremos crear un nuevo servicio que, internamente, hará uso de `messageapp`.
+Inicialmente la funcionalidad será muy parecida a la que ya ofrece el servicio externo, pero iremos añadiendo más complejidad a lo largo del bootcamp.
 
-## 4. ¿Tenemos un registro robusto?
+En este apartado, vamos simplemente a construir un _hola, mundo_ para comprobar que todo funciona.
+Los pasos a seguir son:
 
-El servicio externo de envío de mensajes nos cobra por mensaje, pero no nos cuadran las cuentas.
-Se quiere utilizar el registro para comprobar el gasto de las facturas del proveedor... ¿estamos seguros de que el registro dice la verdad?
+- Implementar servicio en JavaScript, con NodeJS y Express. El servicio debe escuchar en el puerto 9001 y responder a un endpoint con "Hola, mundo".
+- Definir el servicio para poder ejecutarlo como un contenedor, para lo que habrá que crear un `Dockerfile` con la descripción de la imagen.
+- Descomentar las líneas comentadas en el [docker-compose.yml](docker-compose.yml), y validar que podemos levantar el sistema con docker compose y todo funciona.
 
-Debemos asegurarnos de que el comportamiento es correcto en todos los posibles escenarios:
-- Si el proveedor externo nos da el OK al envío del mensaje, debe aparecer una entrada en el registro
-- Si el proveedor externo nos da un error en el envío del mensaje, deber aparecer como no enviado en el registro
-- Si el proveedor externo ha dado timeout, debe aparecer como enviado y no confirmado en el registro
+Es conveniente separar la parte de construir el sistema (`docker-compose build`) de la parte de levantarlo (`docker-compose up`)
 
-¿Qué pasa si se envía si la base de datos da un error?
-¿Es igual de importante el error en el envío de un mensaje o en la consulta del registro?
-Pensar cómo gestionar los errores en cada caso para garantizar la consistencia en los datos de acuerdo al contrato del registro.
+
+### 3 - Crear el módulo cliente
+
+En este apartado vamos a construir un módulo de NodeJS que nos encapsule las peticiones al servicio `messageapp`.
+Esto nos facilitará mantener el código en el futuro, ya que si cambia el API de `messageapp` solo habrá que actualizar este módulo.
+
+Este módulo recibirá a la entrada un destino y un cliente, llamará al API de `messageapp` y devolverá el resultado de la petición.
+El tipo de interfaz que debe ofrecer el módulo no está definido, cada cuál puede diseñar la interfaz como prefiera.
+
+Se puede escribir también un pequeño programa cliente que haga uso de este módulo, para validar su funcionamiento, o añadirle tests, a criterio del implementador.
+
+### 4 - Exponer el api de forma pública
+
+En este apartado queremos ofrecer a nuestros clientes la capacidad de enviar mensajes.
+Para esto necesitaremos crear con express un nuevo endpoint donde ellos puedan decirnos qué mensaje y a quién va a enviarse.
+
+Este endpoint de nuestro servicio tendrá la siguiente forma:
+
+```
+HOST 'localhost'
+PORT 9001
+POST '/messages'
+'Content-Type': 'application/json'
+{
+  "destination": "STRING"
+  "message": "STRING"
+}
+```
+
+Como se puede observar, se trata del mismo API que ofrece `messageapp`, de momento hemos construído, simplemente un proxy del servicio externo.
+
+### 5 - Control de errores
+
+No todo funciona siempre bien. A lo largo del ejercicio habréis podido comprobar que a veces el servicio de mensajería tarda bastante, y a veces devuelve un error.
+Nunca sabremos si los servicio externos van a funcionar como esperamos, o van a estar activos al 100%.
+Por esta razón debemos de tener un control de errores y saber cómo actuar.
+
+En este apartado vamos a empezar a gestionar estos errores, de manera muy sencilla de momento.
+Actualmente tenemos 2 componentes en el sistema, y cualquiera de los 2 puede fallar (sí, también nuestro servicio puede fallar, por errores de programación, inconsistencias de datos, etc.)
+Para indicar los errores utilizaremos los códigos de estado, por lo que debemos asegurarnos que nuestro servicio devuelve:
+
+- HTTP status 200 cuando todo ha sido correcto, y el mensaje se ha enviado correctamente
+- HTTP status 500 si bien la llamada al servicio externo `messageapp` o nuestro propio servicio ha fallado.
+
+Opcionalmente, podemos devolver un mensaje de error en la respuesta, indicando el tipode fallo que se ha producido.
