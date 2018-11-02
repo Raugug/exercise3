@@ -4,15 +4,18 @@ const Message = require('./models/Message')
 
 class _dbService {
     constructor(){
-        this.DBURL = 'mongodb://mongodb:27017/messages'
-        mongoose.connect(this.DBURL, { useNewUrlParser: true })
+        this.DBURL = 'mongodb://mongodb:27017/messages'  
+    }
+
+    connect() {
+        mongoose.connect('mongodb://mongodb:27017/messages', { useNewUrlParser: true })
         .then(x => {
             console.log(`Connected to Mongo! Database name: "${x.connections[0].name}"`);
         })
         .catch(err => {
             console.error("Error connecting to mongo", err);
         });
-        //this.create();
+
     }
 
     create(destination, body){

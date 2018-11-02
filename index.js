@@ -9,19 +9,23 @@ var app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+//app.use(dbService.connect())
 app.use((err, req, res, next) =>{  
   if (err instanceof SyntaxError) {
     res.status(400).json({status: "INVALID JSON FORMAT"})
+  } else if (err) {
+    res.status(500).json({status: "SERVER ERROR"})  
   } else {
     next();
   }
 })
+setTimeout(dbService.connect, 3000)
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 min window
   max: 100, // 100 requests per window
   message:
-    ({status: "Too many requests from this IP, please try again after an hour"})
+    ({status: "Too many requests from this IP, please try again after a minute"})
 });
 
 const validation = () => {
@@ -90,11 +94,11 @@ app.post('/message', apiLimiter, validation(), (req, res, next) => {
 
   axios.post('http://messageapp:3000/message', {destination, body})
   .then(response => {
-    console.log("POST succeeded", response.data);
+    console.log("POST succeeded: ", response.data);
     dbService.create(destination, body)
       .then(message =>{
 
-        console.log("Message stored")
+        console.log("Message stored:", message)
         res.status(200).json({
           status: "200",
           data: response.data
@@ -113,5 +117,5 @@ app.post('/message', apiLimiter, validation(), (req, res, next) => {
 })
 
 app.listen(9001, function () {
-  console.log('Server listening on port 9001!');
+  console.log('Server listening on port 9001');
 });
