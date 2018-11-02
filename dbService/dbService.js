@@ -22,7 +22,12 @@ class _dbService {
        return Message.create({destination: destination, body: body}).then(message => {
             console.log(message);   
         }).catch(err => console.log(err))
-       //return;
+    }
+
+    getAll() {
+        return Message.find()/* .then(messages => {
+            console.log(messages);
+        }).catch (err => console.log(err)) */
     }
 
 

@@ -19,7 +19,7 @@ app.use((err, req, res, next) =>{
     next();
   }
 })
-setTimeout(dbService.connect, 3000)
+setTimeout(dbService.connect, 4000)
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 min window
@@ -86,6 +86,15 @@ const validation = () => {
     next()
   }
 }
+
+app.get('/messages', apiLimiter, (req, res, next) => {
+  dbService.getAll().then(messages => {
+    res.status(200).json({data: messages})
+    console.log("MESSAGES READED", messages)
+
+  }).catch(err => console.log(err))
+})
+
 
 app.post('/message', apiLimiter, validation(), (req, res, next) => {
 
